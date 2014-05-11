@@ -1,5 +1,4 @@
 {
-	"private": true,
 	"name": "lru-files",
 	"version": "0.0.1",
 	"description": "a cache of least recently used files",
