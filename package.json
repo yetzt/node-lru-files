@@ -1,0 +1,13 @@
+{
+	"private": true,
+	"name": "lru-files",
+	"version": "0.0.1",
+	"description": "a cache of least recently used files",
+	"dependencies": {
+		"dur": ">= 0.0.1",
+		"mkdirp": ">= 0.3.5"
+	},
+	"engines": {
+		"node": ">= 0.10"
+	}
+}
