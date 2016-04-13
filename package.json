@@ -1,33 +1,30 @@
 {
-	"name": "lru-files",
-	"version": "0.0.4",
-	"description": "a cache of least recently used files",
-	"licenses": [{
-		"type": "Public Domain",
-		"url": "http://unlicense.org/UNLICENSE"
-	}],
-	"author": "Sebastian Vollnhals <sv@datenfreunde.com>",
-	"maintainers": [{
-		"name": "Sebastian Vollnhals",
-		"email": "sv@datenfreunde.com",
-		"web": "http://datenfreunde.com/"
-	}],
-	"main": "./lib/lru-files.js",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/yetzt/node-lru-files.git"
-	},
-	"keywords": [
-		"lru",
-		"cache",
-		"file",
-		"filecache"
-	],
-	"dependencies": {
-		"dur": ">= 0.0.1",
-		"mkdirp": ">= 0.3.5"
-	},
-	"engines": {
-		"node": ">= 0.10"
-	}
+  "name": "lru-files",
+  "version": "0.0.5",
+  "description": "A filesystem cache of least recently used files",
+  "license": "Unlicense",
+  "author": "yetzt <node@yetzt.me>",
+  "main": "./filecache.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yetzt/node-lru-files.git"
+  },
+  "keywords": [
+    "lru",
+    "cache",
+    "file",
+    "filecache",
+    "filesystem"
+  ],
+  "dependencies": {
+    "debug": "^2.2.0",
+    "dur": "^0.0.2",
+    "mkdirp": "^0.5.1",
+    "queue": "^3.1.0",
+    "rimraf": "^2.5.2"
+  },
+  "bugs": {
+    "url": "https://github.com/yetzt/node-lru-files/issues"
+  },
+  "homepage": "https://github.com/yetzt/node-lru-files#readme"
 }
