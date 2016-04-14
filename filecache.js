@@ -174,7 +174,7 @@ filecache.prototype.init = function(fn){
 // check if a file exists
 filecache.prototype.check = function(file, fn){
 	var self = this;
-	fs.exists(path.resolve(elf.opts.dir, self.sanitize(file)), fn);
+	fs.exists(path.resolve(self.opts.dir, self.sanitize(file)), fn);
 	return this;
 };
 
