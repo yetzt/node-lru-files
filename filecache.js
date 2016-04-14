@@ -39,7 +39,7 @@ function filecache(opts, fn){
 };
 
 // check and apply options
-filecache.prototype.parseopts = function(opts){
+filecache.prototype.parseopts = function(opts) {
 	var self = this;
 	var o = {};
 	
@@ -69,17 +69,21 @@ filecache.prototype.parseopts = function(opts){
 	if (typeof opts.check !== "number" || isNaN(opts.check) || opts.check === 0) opts.check = false;
 	o.check = (opts.check) ? opts.check : Math.max(opts.check, 10000); // minimum 10 seconds
 
-	// determine persists
-	if (!opts.hasOwnProperty("persists")) opts.persists = false;
-	if (typeof opts.persists === "string") opts.persists = dur(opts.persists);
-	if (typeof opts.persists !== "number" || isNaN(opts.persists) || opts.persists === 0) opts.persists = false;
-	o.persists = opts.persists;
+	// determine persist
+	if (!opts.hasOwnProperty("persist")) opts.persist = false;
+	if (typeof opts.persist === "string") opts.persist = dur(opts.persist);
+	if (typeof opts.persist !== "number" || isNaN(opts.persist) || opts.persist === 0) opts.persist = false;
+	o.persist = opts.persist;
+	
+	// cluster
+	o.cluster = (opts.hasOwnProperty("cluster") && opts.cluster === true) ? true : false;
+	if (o.cluster && opts.hasOwnProperty("onsave") && typeof opts.onsave === "function") o.onsave = opts.onsave;
 	
 	return o;
 };
 
 // initialize file cache
-filecache.prototype.init = function(fn){
+filecache.prototype.init = function(fn) {
 	var self = this;
 	
 	// ensure callback
@@ -161,7 +165,7 @@ filecache.prototype.init = function(fn){
 					});
 
 				}, self.opts.persist).unref();
-				
+
 			});
 		
 		});
@@ -172,14 +176,14 @@ filecache.prototype.init = function(fn){
 };
 
 // check if a file exists
-filecache.prototype.check = function(file, fn){
+filecache.prototype.check = function(file, fn) {
 	var self = this;
 	fs.exists(path.resolve(self.opts.dir, self.sanitize(file)), fn);
 	return this;
 };
 
 // add a file
-filecache.prototype.add = function(file, data, fn){
+filecache.prototype.add = function(file, data, fn) {
 	var self = this;
 		
 	var file = path.resolve(this.opts.dir, self.sanitize(file));
@@ -268,7 +272,7 @@ filecache.prototype.add = function(file, data, fn){
 };
 
 // remove file from cache
-filecache.prototype.remove = function(file, fn){
+filecache.prototype.remove = function(file, fn) {
 	var self = this;
 	
 	var file = path.resolve(this.opts.dir, self.sanitize(file));
@@ -295,21 +299,20 @@ filecache.prototype.remove = function(file, fn){
 };
 
 // update file access time
-filecache.prototype.touch = function(file, fn){
+filecache.prototype.touch = function(file, fn) {
 	var self = this;
 	
 	var file = path.resolve(this.opts.dir, self.sanitize(file));
 	
 	if (!self.filemeta.hasOwnProperty(file)) return fn(null);
 	self.filemeta[file].atime = Date.now();
-	self.wrops++;
 	fn(null);
 	
 	return this;
 };
 
 // get a file as buffer
-filecache.prototype.get = function(file, fn){
+filecache.prototype.get = function(file, fn) {
 	var self = this;
 	
 	var file = path.resolve(this.opts.dir, self.sanitize(file));
@@ -326,7 +329,7 @@ filecache.prototype.get = function(file, fn){
 };
 
 // get a file as stream
-filecache.prototype.stream = function(file, fn){
+filecache.prototype.stream = function(file, fn) {
 	var self = this;
 	var file = path.resolve(this.opts.dir, self.sanitize(file));
 
@@ -342,7 +345,7 @@ filecache.prototype.stream = function(file, fn){
 };
 
 // empty the file store
-filecache.prototype.purge = function(fn){
+filecache.prototype.purge = function(fn) {
 	var self = this;
 	
 	// optionalize callback
@@ -457,11 +460,18 @@ filecache.prototype.clean = function(fn) {
 };
 
 // save file meta
-filecache.prototype.save = function(fn){
+filecache.prototype.save = function(fn) {
 	var self = this;
 	
 	// check if persistance file should be used
 	if (!self.opts.persist) return fn(null);
+	
+	// if cluster, call save callback
+	console.log("save callback?");
+	if (self.opts.cluster && (typeof self.opts.onsave === "function")) {
+		console.log("save callback!");
+		self.opts.onsave();
+	}
 	
 	// save file meta
 	fs.writeFile(path.resolve(self.opts.dir, ".filecache.json"), JSON.stringify(self.filemeta), function(err){
@@ -610,7 +620,7 @@ filecache.prototype.readdir = function(p, fn) {
 };
 
 // unlink an array of files
-filecache.prototype.unlink = function(files, fn){
+filecache.prototype.unlink = function(files, fn) {
 	var self = this;
 
 	// ensure files is an array of strings
@@ -643,6 +653,43 @@ filecache.prototype.unlink = function(files, fn){
 	
 	return this;
 };
+
+// handle cluster messages
+filecache.prototype.handle = function(message){
+	var self = this;
+	if (!self.opts.cluster) return this;
+	
+	switch (message.action) {
+		case "add":
+			// add item to cache
+			if (self.filemeta.hasOwnProperty(message.file)) {
+				self.filemeta[message.file].atime = Date.now();
+			} else {
+				self.filemeta[message.file] = message.data;
+				self.usedspace += self.filemeta[message.file].size;
+				self.numfiles++;
+				self.wrops++;
+			}
+		break;
+		case "touch":
+			// update atime in cache
+			self.filemeta[message.file].atime = Date.now();
+		break;
+		case "remove":
+			// update stats and remove item from cache
+			self.usedspace -= self.filemeta[message.file].size;
+			self.numfiles--;
+			self.wrops++;
+			delete self.filemeta[message.file];
+		break;
+		case "save":
+			// reset save timer
+			self.lastwrite = Date.now();
+		break;
+	}
+	
+	return this;
+}
 
 // export
 module.exports = filecache;
